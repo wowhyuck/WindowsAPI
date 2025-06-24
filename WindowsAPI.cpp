@@ -1,16 +1,16 @@
 ﻿// WindowsAPI.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
 
+#include "pch.h"
 #include "framework.h"
 #include "WindowsAPI.h"
+#include "Game.h"
 
 #define MAX_LOADSTRING 100
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
-
-int mousePosX;
-int mousePosY;
+HWND g_hWnd;
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -34,16 +34,33 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     if (!InitInstance (hInstance, nCmdShow))
         return FALSE;
 
-    MSG msg;
+    Game game;
+    game.Init(g_hWnd);
+
+    MSG msg = {};
+    uint64 prevTick = 0;
 
     // 3) 메인 루프
-    // - 입력
-    // - 로직
-    // - 렌더링
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (msg.message != WM_QUIT)
     {
-        ::TranslateMessage(&msg);
-        ::DispatchMessage(&msg);
+        if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+        }
+        else
+        {
+            uint64 now = ::GetTickCount64();
+
+            //if (now - prevTick >= 30)
+            {
+                // 게임
+                game.Update();
+                game.Render();
+
+                prevTick = now;
+            }
+        }
     }
 
     return (int) msg.wParam;
@@ -97,6 +114,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWnd = CreateWindowW(L"WindowsAPI", L"Client", WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, nullptr, nullptr, hInstance, nullptr);
 
+   g_hWnd = hWnd;
+
    if (!hWnd)
    {
       return FALSE;
@@ -142,29 +161,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = ::BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
 
-            // 문자 
-            WCHAR buffer[100];
-            ::wsprintf(buffer, L"(%d, %d)", mousePosX, mousePosY);
-            ::TextOut(hdc, 100, 100, buffer, ::wcslen(buffer));
-
-            // 사각형
-            ::Rectangle(hdc, 200, 200, 400, 400);
-
-            // 원
-            ::Ellipse(hdc, 200, 200, 400, 400);
-
-            // 선
-            ::MoveToEx(hdc, 300, 300, nullptr);
-            ::LineTo(hdc, 400, 400);
-            ::LineTo(hdc, 500, 300);
-
             ::EndPaint(hWnd, &ps);
         }
-        break;
-    case WM_MOUSEMOVE:
-        mousePosX = LOWORD(lParam);
-        mousePosY = HIWORD(lParam);
-        ::InvalidateRect(hWnd, nullptr, TRUE);
         break;
     case WM_DESTROY:
         ::PostQuitMessage(0);
